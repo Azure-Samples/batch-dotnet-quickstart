@@ -1,5 +1,5 @@
 ---
-services: batch
+services: batch, storage
 platforms: dotnet
 author: dlepow
 ---
