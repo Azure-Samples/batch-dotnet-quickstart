@@ -20,13 +20,13 @@ namespace BatchDotNetQuickstart
         // These are used when constructing connection strings for the Batch and Storage client objects.
 
         // Batch account credentials
-        private const string BatchAccountName = "";
-        private const string BatchAccountKey = "";
-        private const string BatchAccountUrl = "";
+        private const string BatchAccountName = "danlep0110";
+        private const string BatchAccountKey = "1UcVwTIaWZQx7kG0Je/dKzW6kWmqtwa9lfKcImqMKyaNBYIHoMYyJ4rD5nCedmAlkGvOlzppNcKmq8jbr0XqYw==";
+        private const string BatchAccountUrl = "https://danlep0110.westus2.batch.azure.com";
 
         // Storage account credentials
-        private const string StorageAccountName = "";
-        private const string StorageAccountKey = "";
+        private const string StorageAccountName = "danlep0110";
+        private const string StorageAccountKey = "rLuvIX+Tp7BLMcNmNFTBe7Moh/xpK4IuAgQMTpYTP0t/WI+o6oXoT+ao7WDLxJ1WM/YQebZlWWwtESz8sYpZJA==";
 
         // Batch resource settings
         private const string PoolId = "DotNetQuickstartPool";
@@ -246,13 +246,14 @@ namespace BatchDotNetQuickstart
             
         }
 
-        // UploadFileToContainer()
-        // Uploads the specified file to the specified Blob container.
-        // * blobClient: A Microsoft.WindowsAzure.Storage.Blob.CloudBlobClient object.
-        // * containerName: The name of the blob storage container to which the file should be uploaded.
-        // * filePath: The full path to the file to upload to Storage.
-        // * Returns: A Microsoft.Azure.Batch.ResourceFile instance representing the file within blob storage.
-
+        
+        /// <summary>
+        /// Uploads the specified file to the specified Blob container.
+        /// </summary>
+        /// <param name="blobClient">A <see cref="CloudBlobClient"/>.</param>
+        /// <param name="containerName">The name of the blob storage container to which the file should be uploaded.</param>
+        /// <param name="filePath">The full path to the file to upload to Storage.</param>
+        /// <returns></returns>
         private static ResourceFile UploadFileToContainer(CloudBlobClient blobClient, string containerName, string filePath)
         {
             Console.WriteLine("Uploading file {0} to container [{1}]...", filePath, containerName);
