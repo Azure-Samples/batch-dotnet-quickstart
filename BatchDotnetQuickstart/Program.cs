@@ -20,13 +20,13 @@ namespace BatchDotNetQuickstart
         // These are used when constructing connection strings for the Batch and Storage client objects.
 
         // Batch account credentials
-        private const string BatchAccountName = "danlep0110";
-        private const string BatchAccountKey = "1UcVwTIaWZQx7kG0Je/dKzW6kWmqtwa9lfKcImqMKyaNBYIHoMYyJ4rD5nCedmAlkGvOlzppNcKmq8jbr0XqYw==";
-        private const string BatchAccountUrl = "https://danlep0110.westus2.batch.azure.com";
+        private const string BatchAccountName = "";
+        private const string BatchAccountKey = "";
+        private const string BatchAccountUrl = "";
 
         // Storage account credentials
-        private const string StorageAccountName = "danlep0110";
-        private const string StorageAccountKey = "rLuvIX+Tp7BLMcNmNFTBe7Moh/xpK4IuAgQMTpYTP0t/WI+o6oXoT+ao7WDLxJ1WM/YQebZlWWwtESz8sYpZJA==";
+        private const string StorageAccountName = "";
+        private const string StorageAccountKey = "";
 
         // Batch resource settings
         private const string PoolId = "DotNetQuickstartPool";
