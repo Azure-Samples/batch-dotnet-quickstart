@@ -253,7 +253,7 @@ namespace BatchDotNetQuickstart
         /// <param name="blobClient">A <see cref="CloudBlobClient"/>.</param>
         /// <param name="containerName">The name of the blob storage container to which the file should be uploaded.</param>
         /// <param name="filePath">The full path to the file to upload to Storage.</param>
-        /// <returns></returns>
+        /// <returns>A ResourceFile instance representing the file within blob storage.</returns>
         private static ResourceFile UploadFileToContainer(CloudBlobClient blobClient, string containerName, string filePath)
         {
             Console.WriteLine("Uploading file {0} to container [{1}]...", filePath, containerName);
