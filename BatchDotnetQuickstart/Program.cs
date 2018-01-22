@@ -37,8 +37,11 @@ namespace BatchDotNetQuickstart
         static void Main(string[] args)
         {
 
-            if (String.IsNullOrEmpty(BatchAccountName) || String.IsNullOrEmpty(BatchAccountKey) || String.IsNullOrEmpty(BatchAccountUrl) ||
-                String.IsNullOrEmpty(StorageAccountName) || String.IsNullOrEmpty(StorageAccountKey))
+            if (String.IsNullOrEmpty(BatchAccountName) || 
+                String.IsNullOrEmpty(BatchAccountKey) ||
+                String.IsNullOrEmpty(BatchAccountUrl) ||
+                String.IsNullOrEmpty(StorageAccountName) ||
+                String.IsNullOrEmpty(StorageAccountKey))
             {
                 throw new InvalidOperationException("One or more account credential strings have not been populated. Please ensure that your Batch and Storage account credentials have been specified.");
             }
@@ -66,7 +69,7 @@ namespace BatchDotNetQuickstart
 
                 CloudBlobContainer container = blobClient.GetContainerReference(inputContainerName);
 
-                container.CreateAsync();
+                container.CreateIfNotExists();
 
                 // The collection of data files that are to be processed by the tasks
                 List<string> inputFilePaths = new List<string>
@@ -84,14 +87,12 @@ namespace BatchDotNetQuickstart
                 {
                     inputFiles.Add(UploadFileToContainer(blobClient, inputContainerName, filePath));
                 }
-                
+
                 // Get a Batch client using account creds
 
                 BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(BatchAccountUrl, BatchAccountName, BatchAccountKey);
 
-                BatchClient batchClient = BatchClient.Open(cred);
-
-                using (batchClient)
+                using (BatchClient batchClient = BatchClient.Open(cred))
                 {
                     // Create a Batch pool, VM configuration, Windows Server image
                     Console.WriteLine("Creating pool [{0}]...", PoolId);
@@ -99,30 +100,28 @@ namespace BatchDotNetQuickstart
                     ImageReference imageReference = new ImageReference(
                         publisher: "MicrosoftWindowsServer",
                         offer: "WindowsServer",
-                        sku: "2012-R2-Datacenter",
+                        sku: "2012-R2-datacenter-smalldisk",
                         version: "latest");
 
                     VirtualMachineConfiguration virtualMachineConfiguration =
                     new VirtualMachineConfiguration(
                         imageReference: imageReference,
-                        nodeAgentSkuId: "batch.node.windows amd64"
-                        );
+                        nodeAgentSkuId: "batch.node.windows amd64");
 
                     try
                     {
                         CloudPool pool = batchClient.PoolOperations.CreatePool(
-                        poolId: PoolId,
-                        targetDedicatedComputeNodes: PoolNodeCount,
-                        virtualMachineSize: PoolVMSize,
-                        virtualMachineConfiguration: virtualMachineConfiguration
-                        );
+                            poolId: PoolId,
+                            targetDedicatedComputeNodes: PoolNodeCount,
+                            virtualMachineSize: PoolVMSize,
+                            virtualMachineConfiguration: virtualMachineConfiguration);
 
                         pool.Commit();
                     }
                     catch (BatchException be)
                     {
                         // Accept the specific error code PoolExists as that is expected if the pool already exists
-                        if (be.RequestInformation?.BatchError != null && be.RequestInformation.BatchError.Code == BatchErrorCodeStrings.PoolExists)
+                        if (be.RequestInformation?.BatchError?.Code == BatchErrorCodeStrings.PoolExists)
                         {
                             Console.WriteLine("The pool {0} already existed when we tried to create it", PoolId);
                         }
@@ -146,7 +145,7 @@ namespace BatchDotNetQuickstart
                     catch (BatchException be)
                     {
                         // Accept the specific error code JobExists as that is expected if the job already exists
-                        if (be.RequestInformation?.BatchError != null && be.RequestInformation.BatchError.Code == BatchErrorCodeStrings.JobExists)
+                        if (be.RequestInformation?.BatchError?.Code == BatchErrorCodeStrings.JobExists)
                         {
                             Console.WriteLine("The job {0} already existed when we tried to create it", JobId);
                         }
@@ -164,27 +163,29 @@ namespace BatchDotNetQuickstart
 
                     // Create each of the tasks to process one of the input files. 
 
-                    foreach (ResourceFile inputFile in inputFiles)
+                    for (int i = 0; i < inputFiles.Count; i++)
                     {
-                        string taskId = String.Format("Task{0}", inputFiles.IndexOf(inputFile));
-                        string inputfilename = inputFile.FilePath;
-                        string taskCommandLine = String.Format("cmd /c type {0}", inputfilename);
+                        string taskId = String.Format("Task{0}", i);
+                        string inputFilename = inputFiles[i].FilePath;
+                        string taskCommandLine = String.Format("cmd /c type {0}", inputFilename);
 
                         CloudTask task = new CloudTask(taskId, taskCommandLine);
-                        task.ResourceFiles = new List<ResourceFile> { inputFile };
+                        task.ResourceFiles = new List<ResourceFile> { inputFiles[i] };
                         tasks.Add(task);
                     }
 
                     // Add all tasks to the job.
-                    batchClient.JobOperations.AddTaskAsync(JobId, tasks).Wait();
+                    batchClient.JobOperations.AddTask(JobId, tasks);
 
 
                     // Monitor task success/failure, specifying a maximum amount of time to wait for the tasks to complete.
-                    Console.WriteLine("Monitoring all tasks for 'Completed' state, timeout in 30 min...");
+
+                    TimeSpan timeout = TimeSpan.FromMinutes(30);
+                    Console.WriteLine("Monitoring all tasks for 'Completed' state, timeout in {0}...", timeout);
 
                     IEnumerable<CloudTask> addedTasks = batchClient.JobOperations.ListTasks(JobId);
 
-                    batchClient.Utilities.CreateTaskStateMonitor().WaitAll(addedTasks, TaskState.Completed, TimeSpan.FromMinutes(30));
+                    batchClient.Utilities.CreateTaskStateMonitor().WaitAll(addedTasks, TaskState.Completed, timeout);
 
                     Console.WriteLine("All tasks reached state Completed.");
 
@@ -225,25 +226,16 @@ namespace BatchDotNetQuickstart
                     string response = Console.ReadLine().ToLower();
                     if (response != "n" && response != "no")
                     {
-                        batchClient.JobOperations.DeleteJobAsync(JobId).Wait();
+                        batchClient.JobOperations.DeleteJob(JobId);
                     }
 
                     Console.Write("Delete pool? [yes] no: ");
                     response = Console.ReadLine().ToLower();
                     if (response != "n" && response != "no")
                     {
-                        batchClient.PoolOperations.DeletePoolAsync(PoolId).Wait();
+                        batchClient.PoolOperations.DeletePool(PoolId);
                     }
                 }
-            }
-            catch (AggregateException ae)
-
-            {
-                Console.WriteLine();
-                Console.WriteLine("One or more exceptions occurred.");
-                Console.WriteLine();
-
-                PrintAggregateException(ae);
             }
             finally
             {
@@ -251,14 +243,17 @@ namespace BatchDotNetQuickstart
                 Console.WriteLine("Sample complete, hit ENTER to exit...");
                 Console.ReadLine();
             }
+            
         }
 
-        // UploadFileToContainer(): Uploads the specified file to the specified Blob container.
-        // * blobClient: A Microsoft.WindowsAzure.Storage.Blob.CloudBlobClient object.
-        // * containerName: The name of the blob storage container to which the file should be uploaded.
-        // * filePath: The full path to the file to upload to Storage.
-        // * Returns: A Microsoft.Azure.Batch.ResourceFile instance representing the file within blob storage.
-
+        
+        /// <summary>
+        /// Uploads the specified file to the specified Blob container.
+        /// </summary>
+        /// <param name="blobClient">A <see cref="CloudBlobClient"/>.</param>
+        /// <param name="containerName">The name of the blob storage container to which the file should be uploaded.</param>
+        /// <param name="filePath">The full path to the file to upload to Storage.</param>
+        /// <returns>A ResourceFile instance representing the file within blob storage.</returns>
         private static ResourceFile UploadFileToContainer(CloudBlobClient blobClient, string containerName, string filePath)
         {
             Console.WriteLine("Uploading file {0} to container [{1}]...", filePath, containerName);
@@ -267,7 +262,7 @@ namespace BatchDotNetQuickstart
 
             CloudBlobContainer container = blobClient.GetContainerReference(containerName);
             CloudBlockBlob blobData = container.GetBlockBlobReference(blobName);
-            blobData.UploadFromFileAsync(filePath);
+            blobData.UploadFromFile(filePath);
 
             // Set the expiry time and permissions for the blob shared access signature. In this case, no start time is specified,
             // so the shared access signature becomes valid immediately
@@ -284,17 +279,5 @@ namespace BatchDotNetQuickstart
             return new ResourceFile(blobSasUri, blobName);
         }
 
-        // PrintAggregateException()
-        // Processes all exceptions inside an AggregateExceptionand writes each inner exception to the console.
-        // * aggregateException: The AggregateException\ to process.
-        public static void PrintAggregateException(AggregateException aggregateException)
-        {
-            // Flatten the aggregate and iterate over its inner exceptions, printing each
-            foreach (Exception exception in aggregateException.Flatten().InnerExceptions)
-            {
-                Console.WriteLine(exception.ToString());
-                Console.WriteLine();
-            }
-        }
     }
 }
