@@ -6,9 +6,7 @@ author: dlepow
 
 # Azure Batch .NET Quickstart
 
-A basic .NET application that introduces Batch features such as pools, nodes, jobs, tasks, and interation with Storage.
-
-For details and explanation, see the accompanying article [Run your first Batch job using the .NET API](https://docs.microsoft.com/azure/batch/quick-run-dotnet).
+A basic .NET application that introduces Batch features such as pools, nodes, jobs, tasks, and interation with Storage. Each task writes a small text file to standard output.
 
 ## Prerequisites
 
@@ -18,7 +16,7 @@ For details and explanation, see the accompanying article [Run your first Batch 
 ## Resources
 
 - [Azure Batch documentation](https://docs.microsoft.com/azure/batch/)
-- [Azure Batch and HPC code samples](https://github.com/Azure/azure-batch-samples)
+- [Azure Batch code samples repo](https://github.com/Azure/azure-batch-samples)
 
 ## Project code of conduct
 
