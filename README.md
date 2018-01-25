@@ -1,4 +1,4 @@
-d---
+---
 services: batch, storage
 platforms: dotnet
 author: dlepow
