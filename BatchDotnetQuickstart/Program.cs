@@ -1,7 +1,4 @@
-﻿// Companion project to the following article:
-// https://docs.microsoft.com/azure/batch/quick-run-dotnet
-
-using Microsoft.Azure.Batch;
+﻿using Microsoft.Azure.Batch;
 using Microsoft.Azure.Batch.Auth;
 using Microsoft.Azure.Batch.Common;
 using Microsoft.WindowsAzure.Storage;
