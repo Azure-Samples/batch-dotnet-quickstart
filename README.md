@@ -1,4 +1,4 @@
----
+d---
 services: batch, storage
 platforms: dotnet
 author: dlepow
@@ -6,7 +6,7 @@ author: dlepow
 
 # Azure Batch .NET Quickstart
 
-A basic .NET application that introduces Batch features such as pools, nodes, jobs, tasks, and interation with Storage. Each task writes a small text file to standard output.
+A basic .NET application that introduces Batch features such as pools, nodes, jobs, tasks, and interaction with Storage. Each task writes a small text file to standard output.
 
 ## Prerequisites
 
