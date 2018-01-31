@@ -8,6 +8,8 @@ author: dlepow
 
 A basic .NET application that introduces Batch features such as pools, nodes, jobs, tasks, and interaction with Storage. Each task writes a small text file to standard output.
 
+For details and explanation, see the accompanying article [Run your first Batch job with the .NET API](https://docs.microsoft.com/azure/batch/quick-run-dotnet).
+
 ## Prerequisites
 
 - Azure Batch account and linked general-purpose Azure Storage account
