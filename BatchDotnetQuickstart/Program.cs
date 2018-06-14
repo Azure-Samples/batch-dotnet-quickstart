@@ -16,6 +16,7 @@ namespace BatchDotNetQuickstart
         // Update the Batch and Storage account credential strings below with the values unique to your accounts.
         // These are used when constructing connection strings for the Batch and Storage client objects.
 
+        
         // Batch account credentials
         private const string BatchAccountName = "";
         private const string BatchAccountKey = "";
@@ -30,6 +31,8 @@ namespace BatchDotNetQuickstart
         private const string JobId = "DotNetQuickstartJob";
         private const int PoolNodeCount = 2;
         private const string PoolVMSize = "STANDARD_A1_v2";
+
+
 
         static void Main(string[] args)
         {
@@ -71,9 +74,9 @@ namespace BatchDotNetQuickstart
                 // The collection of data files that are to be processed by the tasks
                 List<string> inputFilePaths = new List<string>
                 {
-                    @"..\..\taskdata0.txt",
-                    @"..\..\taskdata1.txt",
-                    @"..\..\taskdata2.txt"
+                    @"taskdata0.txt",
+                    @"taskdata1.txt",
+                    @"taskdata2.txt"
                 };
 
                 // Upload the data files to Azure Storage. This is the data that will be processed by each of the tasks that are

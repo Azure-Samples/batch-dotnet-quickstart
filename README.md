@@ -13,7 +13,7 @@ For details and explanation, see the accompanying article [Run your first Batch 
 ## Prerequisites
 
 - Azure Batch account and linked general-purpose Azure Storage account
-- Visual Studio 2015 or later
+- Visual Studio 2017
 
 ## Resources
 
