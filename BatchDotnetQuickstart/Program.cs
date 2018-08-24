@@ -69,14 +69,14 @@ namespace BatchDotNetQuickstart
 
                 CloudBlobContainer container = blobClient.GetContainerReference(inputContainerName);
 
-                container.CreateIfNotExists();
+                container.CreateIfNotExistsAsync();
 
                 // The collection of data files that are to be processed by the tasks
                 List<string> inputFilePaths = new List<string>
                 {
-                    @"taskdata0.txt",
-                    @"taskdata1.txt",
-                    @"taskdata2.txt"
+                    "taskdata0.txt",
+                    "taskdata1.txt",
+                    "taskdata2.txt"
                 };
 
                 // Upload the data files to Azure Storage. This is the data that will be processed by each of the tasks that are
@@ -211,8 +211,9 @@ namespace BatchDotNetQuickstart
                     Console.WriteLine("Elapsed time: {0}", timer.Elapsed);
 
                     // Clean up Storage resources
-                    if (container.DeleteIfExists())
+                    if (container != null)
                     {
+                        container.DeleteIfExistsAsync();
                         Console.WriteLine("Container [{0}] deleted.", inputContainerName);
                     }
                     else
@@ -262,7 +263,7 @@ namespace BatchDotNetQuickstart
 
             CloudBlobContainer container = blobClient.GetContainerReference(containerName);
             CloudBlockBlob blobData = container.GetBlockBlobReference(blobName);
-            blobData.UploadFromFile(filePath);
+            blobData.UploadFromFileAsync(filePath);
 
             // Set the expiry time and permissions for the blob shared access signature. In this case, no start time is specified,
             // so the shared access signature becomes valid immediately
