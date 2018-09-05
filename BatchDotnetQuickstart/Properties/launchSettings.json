@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BatchDotNetQuickstart": {
+      "commandName": "Project",
+      "workingDirectory": "$(ProjectDir)"
+    }
+  }
+}
