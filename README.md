@@ -13,12 +13,12 @@ For details and explanation, see the accompanying article [Run your first Batch 
 ## Prerequisites
 
 - Azure Batch account and linked general-purpose Azure Storage account
-- Visual Studio 2017
+- Visual Studio 2017, or .NET core 2.1 for [Linux](https://docs.microsoft.com/dotnet/core/linux-prerequisites?tabs=netcore21) or [Windows](https://docs.microsoft.com/dotnet/core/windows-prerequisites?tabs=netcore21)
 
 ## Resources
 
 - [Azure Batch documentation](https://docs.microsoft.com/azure/batch/)
-- [Azure Batch code samples repo](https://github.com/Azure/azure-batch-samples)
+- [Azure Batch code samples repo](https://github.com/Azure-Samples/azure-batch-samples)
 
 ## Project code of conduct
 
