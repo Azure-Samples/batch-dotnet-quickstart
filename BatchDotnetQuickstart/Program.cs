@@ -213,7 +213,7 @@ namespace BatchDotNetQuickstart
                     // Clean up Storage resources
                     if (container != null)
                     {
-                        container.DeleteIfExistsAsync();
+                        container.DeleteIfExistsAsync().Wait();
                         Console.WriteLine("Container [{0}] deleted.", inputContainerName);
                     }
                     else
