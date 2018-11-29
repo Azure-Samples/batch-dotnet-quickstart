@@ -243,7 +243,7 @@ namespace BatchDotNetQuickstart
             return new ImageReference(
                 publisher: "MicrosoftWindowsServer",
                 offer: "WindowsServer",
-                sku: "2012-R2-datacenter-smalldisk",
+                sku: "2016-datacenter-smalldisk",
                 version: "latest");
         }
 
