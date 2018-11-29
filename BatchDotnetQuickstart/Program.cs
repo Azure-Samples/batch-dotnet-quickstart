@@ -54,15 +54,8 @@ namespace BatchDotNetQuickstart
                 Stopwatch timer = new Stopwatch();
                 timer.Start();
 
-                // Construct the Storage account connection string
-                string storageConnectionString = String.Format("DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1}",
-                                                                StorageAccountName, StorageAccountKey);
-
-                // Retrieve the storage account
-                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-
                 // Create the blob client, for use in obtaining references to blob storage containers
-                CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+                CloudBlobClient blobClient = CreateCloudBlobClient(StorageAccountName, StorageAccountKey);
 
                 // Use the blob client to create the input container in Azure Storage 
                 const string inputContainerName = "input";
@@ -94,42 +87,14 @@ namespace BatchDotNetQuickstart
 
                 using (BatchClient batchClient = BatchClient.Open(cred))
                 {
-                    // Create a Batch pool, VM configuration, Windows Server image
                     Console.WriteLine("Creating pool [{0}]...", PoolId);
 
-                    ImageReference imageReference = new ImageReference(
-                        publisher: "MicrosoftWindowsServer",
-                        offer: "WindowsServer",
-                        sku: "2012-R2-datacenter-smalldisk",
-                        version: "latest");
+                    // Create a Windows Server image, VM configuration, Batch pool
+                    ImageReference imageReference = CreateImageReference();
 
-                    VirtualMachineConfiguration virtualMachineConfiguration =
-                    new VirtualMachineConfiguration(
-                        imageReference: imageReference,
-                        nodeAgentSkuId: "batch.node.windows amd64");
+                    VirtualMachineConfiguration vmConfiguration = CreateVirtualMachineConfiguration(imageReference);
 
-                    try
-                    {
-                        CloudPool pool = batchClient.PoolOperations.CreatePool(
-                            poolId: PoolId,
-                            targetDedicatedComputeNodes: PoolNodeCount,
-                            virtualMachineSize: PoolVMSize,
-                            virtualMachineConfiguration: virtualMachineConfiguration);
-
-                        pool.Commit();
-                    }
-                    catch (BatchException be)
-                    {
-                        // Accept the specific error code PoolExists as that is expected if the pool already exists
-                        if (be.RequestInformation?.BatchError?.Code == BatchErrorCodeStrings.PoolExists)
-                        {
-                            Console.WriteLine("The pool {0} already existed when we tried to create it", PoolId);
-                        }
-                        else
-                        {
-                            throw; // Any other exception is unexpected
-                        }
-                    }
+                    CreateBatchPool(batchClient, vmConfiguration);
 
                     // Create a Batch job
                     Console.WriteLine("Creating job [{0}]...", JobId);
@@ -211,15 +176,8 @@ namespace BatchDotNetQuickstart
                     Console.WriteLine("Elapsed time: {0}", timer.Elapsed);
 
                     // Clean up Storage resources
-                    if (container != null)
-                    {
-                        container.DeleteIfExistsAsync().Wait();
-                        Console.WriteLine("Container [{0}] deleted.", inputContainerName);
-                    }
-                    else
-                    {
-                        Console.WriteLine("Container [{0}] does not exist, skipping deletion.", inputContainerName);
-                    }
+                    container.DeleteIfExistsAsync().Wait();
+                    Console.WriteLine("Container [{0}] deleted.", inputContainerName);
 
                     // Clean up Batch resources (if the user so chooses)
                     Console.WriteLine();
@@ -245,6 +203,68 @@ namespace BatchDotNetQuickstart
                 Console.ReadLine();
             }
             
+        }
+
+        private static void CreateBatchPool(BatchClient batchClient, VirtualMachineConfiguration vmConfiguration)
+        {
+            try
+            {
+                CloudPool pool = batchClient.PoolOperations.CreatePool(
+                    poolId: PoolId,
+                    targetDedicatedComputeNodes: PoolNodeCount,
+                    virtualMachineSize: PoolVMSize,
+                    virtualMachineConfiguration: vmConfiguration);
+
+                pool.Commit();
+            }
+            catch (BatchException be)
+            {
+                // Accept the specific error code PoolExists as that is expected if the pool already exists
+                if (be.RequestInformation?.BatchError?.Code == BatchErrorCodeStrings.PoolExists)
+                {
+                    Console.WriteLine("The pool {0} already existed when we tried to create it", PoolId);
+                }
+                else
+                {
+                    throw; // Any other exception is unexpected
+                }
+            }
+        }
+
+        private static VirtualMachineConfiguration CreateVirtualMachineConfiguration(ImageReference imageReference)
+        {
+            return new VirtualMachineConfiguration(
+                imageReference: imageReference,
+                nodeAgentSkuId: "batch.node.windows amd64");
+        }
+
+        private static ImageReference CreateImageReference()
+        {
+            return new ImageReference(
+                publisher: "MicrosoftWindowsServer",
+                offer: "WindowsServer",
+                sku: "2016-datacenter-smalldisk",
+                version: "latest");
+        }
+
+        /// <summary>
+        /// Creates a blob client
+        /// </summary>
+        /// <param name="storageAccountName">The name of the Storage Account</param>
+        /// <param name="storageAccountKey">The key of the Storage Account</param>
+        /// <returns></returns>
+        private static CloudBlobClient CreateCloudBlobClient(string storageAccountName, string storageAccountKey)
+        {
+            // Construct the Storage account connection string
+            string storageConnectionString =
+                $"DefaultEndpointsProtocol=https;AccountName={storageAccountName};AccountKey={storageAccountKey}";
+
+            // Retrieve the storage account
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageConnectionString);
+
+            // Create the blob client
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+            return blobClient;
         }
 
 
