@@ -1,8 +1,8 @@
 ﻿using Microsoft.Azure.Batch;
 using Microsoft.Azure.Batch.Auth;
 using Microsoft.Azure.Batch.Common;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,7 +15,6 @@ namespace BatchDotNetQuickstart
     {
         // Update the Batch and Storage account credential strings below with the values unique to your accounts.
         // These are used when constructing connection strings for the Batch and Storage client objects.
-
         
         // Batch account credentials
         private const string BatchAccountName = "";
@@ -34,7 +33,7 @@ namespace BatchDotNetQuickstart
         
 
 
-        static void Main(string[] args)
+        static void Main()
         {
 
             if (String.IsNullOrEmpty(BatchAccountName) || 
@@ -287,8 +286,9 @@ namespace BatchDotNetQuickstart
             CloudBlockBlob blobData = container.GetBlockBlobReference(blobName);
             blobData.UploadFromFileAsync(filePath).Wait();
 
-            // Set the expiry time and permissions for the blob shared access signature. In this case, no start time is specified,
-            // so the shared access signature becomes valid immediately
+            // Set the expiry time and permissions for the blob shared access signature. 
+            // In this case, no start time is specified, so the shared access signature 
+            // becomes valid immediately
             SharedAccessBlobPolicy sasConstraints = new SharedAccessBlobPolicy
             {
                 SharedAccessExpiryTime = DateTime.UtcNow.AddHours(2),
@@ -299,7 +299,7 @@ namespace BatchDotNetQuickstart
             string sasBlobToken = blobData.GetSharedAccessSignature(sasConstraints);
             string blobSasUri = String.Format("{0}{1}", blobData.Uri, sasBlobToken);
 
-            return new ResourceFile(blobSasUri, blobName);
+            return ResourceFile.FromUrl(blobSasUri, filePath);
         }
 
     }
