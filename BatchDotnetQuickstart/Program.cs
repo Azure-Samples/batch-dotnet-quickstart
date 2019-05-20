@@ -299,7 +299,7 @@ namespace BatchDotNetQuickstart
             string sasBlobToken = blobData.GetSharedAccessSignature(sasConstraints);
             string blobSasUri = String.Format("{0}{1}", blobData.Uri, sasBlobToken);
 
-            return ResourceFile.FromUrl(blobSasUri, filePath);
+            return ResourceFile.FromUrl(blobSasUri, blobName);
         }
 
     }
