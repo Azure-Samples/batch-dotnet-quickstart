@@ -1,4 +1,4 @@
-﻿using Microsoft.Azure.Batch;
+using Microsoft.Azure.Batch;
 using Microsoft.Azure.Batch.Auth;
 using Microsoft.Azure.Batch.Common;
 using Microsoft.Azure.Storage;
@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 
 
 namespace BatchDotNetQuickstart
@@ -33,7 +34,7 @@ namespace BatchDotNetQuickstart
         
 
 
-        static void Main()
+        static async Task Main()
         {
 
             if (String.IsNullOrEmpty(BatchAccountName) || 
@@ -61,7 +62,7 @@ namespace BatchDotNetQuickstart
 
                 CloudBlobContainer container = blobClient.GetContainerReference(inputContainerName);
 
-                container.CreateIfNotExistsAsync().Wait();
+                await container.CreateIfNotExistsAsync();
 
                 // The collection of data files that are to be processed by the tasks
                 List<string> inputFilePaths = new List<string>
@@ -77,7 +78,7 @@ namespace BatchDotNetQuickstart
 
                 foreach (string filePath in inputFilePaths)
                 {
-                    inputFiles.Add(UploadFileToContainer(blobClient, inputContainerName, filePath));
+                    inputFiles.Add(await UploadFileToContainer(blobClient, inputContainerName, filePath));
                 }
 
                 // Get a Batch client using account creds
@@ -93,7 +94,7 @@ namespace BatchDotNetQuickstart
 
                     VirtualMachineConfiguration vmConfiguration = CreateVirtualMachineConfiguration(imageReference);
 
-                    CreateBatchPool(batchClient, vmConfiguration);
+                    await CreateBatchPool(batchClient, vmConfiguration);
 
                     // Create a Batch job
                     Console.WriteLine("Creating job [{0}]...", JobId);
@@ -104,7 +105,7 @@ namespace BatchDotNetQuickstart
                         job.Id = JobId;
                         job.PoolInformation = new PoolInformation { PoolId = PoolId };
 
-                        job.Commit();
+                        await job.CommitAsync();
                     }
                     catch (BatchException be)
                     {
@@ -175,7 +176,7 @@ namespace BatchDotNetQuickstart
                     Console.WriteLine("Elapsed time: {0}", timer.Elapsed);
 
                     // Clean up Storage resources
-                    container.DeleteIfExistsAsync().Wait();
+                    await container.DeleteIfExistsAsync();
                     Console.WriteLine("Container [{0}] deleted.", inputContainerName);
 
                     // Clean up Batch resources (if the user so chooses)
@@ -204,7 +205,7 @@ namespace BatchDotNetQuickstart
             
         }
 
-        private static void CreateBatchPool(BatchClient batchClient, VirtualMachineConfiguration vmConfiguration)
+        private static async Task CreateBatchPool(BatchClient batchClient, VirtualMachineConfiguration vmConfiguration)
         {
             try
             {
@@ -214,7 +215,7 @@ namespace BatchDotNetQuickstart
                     virtualMachineSize: PoolVMSize,
                     virtualMachineConfiguration: vmConfiguration);
 
-                pool.Commit();
+                await pool.CommitAsync();
             }
             catch (BatchException be)
             {
@@ -274,7 +275,7 @@ namespace BatchDotNetQuickstart
         /// <param name="containerName">The name of the blob storage container to which the file should be uploaded.</param>
         /// <param name="filePath">The full path to the file to upload to Storage.</param>
         /// <returns>A ResourceFile instance representing the file within blob storage.</returns>
-        private static ResourceFile UploadFileToContainer(CloudBlobClient blobClient, string containerName, string filePath)
+        private static async Task<ResourceFile> UploadFileToContainer(CloudBlobClient blobClient, string containerName, string filePath)
         {
             Console.WriteLine("Uploading file {0} to container [{1}]...", filePath, containerName);
 
@@ -284,7 +285,7 @@ namespace BatchDotNetQuickstart
 
             CloudBlobContainer container = blobClient.GetContainerReference(containerName);
             CloudBlockBlob blobData = container.GetBlockBlobReference(blobName);
-            blobData.UploadFromFileAsync(filePath).Wait();
+            await blobData.UploadFromFileAsync(filePath);
 
             // Set the expiry time and permissions for the blob shared access signature. 
             // In this case, no start time is specified, so the shared access signature 
