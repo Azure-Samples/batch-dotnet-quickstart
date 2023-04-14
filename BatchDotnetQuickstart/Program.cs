@@ -1,8 +1,8 @@
 ﻿using Microsoft.Azure.Batch;
 using Microsoft.Azure.Batch.Auth;
 using Microsoft.Azure.Batch.Common;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -15,15 +15,15 @@ namespace BatchDotNetQuickstart
     {
         // Update the Batch and Storage account credential strings below with the values unique to your accounts.
         // These are used when constructing connection strings for the Batch and Storage client objects.
-        
+
         // Batch account credentials
-        private const string BatchAccountName = "";
-        private const string BatchAccountKey = "";
-        private const string BatchAccountUrl = "";
+        private const string BatchAccountName = "batchdotnetvthepet";
+        private const string BatchAccountKey = "d40ggzQYcUl6UINkVwrDeuhBv8RWN4ZDC8RYehsCdPnxY6qixDfbajne4WZoQtjyIC5VK7A7oQsS+ABaYM9Iww==";
+        private const string BatchAccountUrl = "https://batchdotnetvthepet.eastus.batch.azure.com";
 
         // Storage account credentials
-        private const string StorageAccountName = "";
-        private const string StorageAccountKey = "";
+        private const string StorageAccountName = "batchdotnetvthepet";
+        private const string StorageAccountKey = "QFPttW+QepxqqlZUWx1p4AvkFHQUfU8hiv2hlJmfMrAxyy1QEres4dwkiDztCGh67Y5LplxuzSHX+AStW2u5Hw==";
 
         // Batch resource settings
         private const string PoolId = "DotNetQuickstartPool";
