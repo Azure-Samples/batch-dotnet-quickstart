@@ -1,13 +1,13 @@
-﻿using Microsoft.Azure.Batch;
+﻿using Azure.Storage;
+using Azure.Storage.Blobs;
+using Azure.Storage.Sas;
+using Microsoft.Azure.Batch;
 using Microsoft.Azure.Batch.Auth;
 using Microsoft.Azure.Batch.Common;
-using Microsoft.Azure.Storage;
-using Microsoft.Azure.Storage.Blob;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-
 
 namespace BatchDotNetQuickstart
 {
@@ -15,7 +15,7 @@ namespace BatchDotNetQuickstart
     {
         // Update the Batch and Storage account credential strings below with the values unique to your accounts.
         // These are used when constructing connection strings for the Batch and Storage client objects.
-        
+
         // Batch account credentials
         private const string BatchAccountName = "";
         private const string BatchAccountKey = "";
@@ -30,13 +30,10 @@ namespace BatchDotNetQuickstart
         private const string JobId = "DotNetQuickstartJob";
         private const int PoolNodeCount = 2;
         private const string PoolVMSize = "STANDARD_A1_v2";
-        
-
 
         static void Main()
         {
-
-            if (String.IsNullOrEmpty(BatchAccountName) || 
+            if (String.IsNullOrEmpty(BatchAccountName) ||
                 String.IsNullOrEmpty(BatchAccountKey) ||
                 String.IsNullOrEmpty(BatchAccountUrl) ||
                 String.IsNullOrEmpty(StorageAccountName) ||
@@ -47,24 +44,21 @@ namespace BatchDotNetQuickstart
 
             try
             {
-
                 Console.WriteLine("Sample start: {0}", DateTime.Now);
                 Console.WriteLine();
-                Stopwatch timer = new Stopwatch();
+                var timer = new Stopwatch();
                 timer.Start();
 
                 // Create the blob client, for use in obtaining references to blob storage containers
-                CloudBlobClient blobClient = CreateCloudBlobClient(StorageAccountName, StorageAccountKey);
+                var blobServiceClient = GetBlobServiceClient(StorageAccountName, StorageAccountKey);
 
                 // Use the blob client to create the input container in Azure Storage 
                 const string inputContainerName = "input";
-
-                CloudBlobContainer container = blobClient.GetContainerReference(inputContainerName);
-
-                container.CreateIfNotExistsAsync().Wait();
+                var containerClient = blobServiceClient.GetBlobContainerClient(inputContainerName);
+                containerClient.CreateIfNotExistsAsync().Wait();
 
                 // The collection of data files that are to be processed by the tasks
-                List<string> inputFilePaths = new List<string>
+                List<string> inputFilePaths = new()
                 {
                     "taskdata0.txt",
                     "taskdata1.txt",
@@ -73,126 +67,114 @@ namespace BatchDotNetQuickstart
 
                 // Upload the data files to Azure Storage. This is the data that will be processed by each of the tasks that are
                 // executed on the compute nodes within the pool.
-                List<ResourceFile> inputFiles = new List<ResourceFile>();
+                var inputFiles = new List<ResourceFile>();
 
-                foreach (string filePath in inputFilePaths)
+                foreach (var filePath in inputFilePaths)
                 {
-                    inputFiles.Add(UploadFileToContainer(blobClient, inputContainerName, filePath));
+                    inputFiles.Add(UploadFileToContainer(containerClient, inputContainerName, filePath));
                 }
 
                 // Get a Batch client using account creds
+                var cred = new BatchSharedKeyCredentials(BatchAccountUrl, BatchAccountName, BatchAccountKey);
 
-                BatchSharedKeyCredentials cred = new BatchSharedKeyCredentials(BatchAccountUrl, BatchAccountName, BatchAccountKey);
+                using BatchClient batchClient = BatchClient.Open(cred);
+                Console.WriteLine("Creating pool [{0}]...", PoolId);
 
-                using (BatchClient batchClient = BatchClient.Open(cred))
+                // Create a Windows Server image, VM configuration, Batch pool
+                ImageReference imageReference = CreateImageReference();
+                VirtualMachineConfiguration vmConfiguration = CreateVirtualMachineConfiguration(imageReference);
+                CreateBatchPool(batchClient, vmConfiguration);
+
+                // Create a Batch job
+                Console.WriteLine("Creating job [{0}]...", JobId);
+
+                try
                 {
-                    Console.WriteLine("Creating pool [{0}]...", PoolId);
-
-                    // Create a Windows Server image, VM configuration, Batch pool
-                    ImageReference imageReference = CreateImageReference();
-
-                    VirtualMachineConfiguration vmConfiguration = CreateVirtualMachineConfiguration(imageReference);
-
-                    CreateBatchPool(batchClient, vmConfiguration);
-
-                    // Create a Batch job
-                    Console.WriteLine("Creating job [{0}]...", JobId);
-
-                    try
+                    CloudJob job = batchClient.JobOperations.CreateJob();
+                    job.Id = JobId;
+                    job.PoolInformation = new PoolInformation { PoolId = PoolId };
+                    job.Commit();
+                }
+                catch (BatchException be)
+                {
+                    // Accept the specific error code JobExists as that is expected if the job already exists
+                    if (be.RequestInformation?.BatchError?.Code == BatchErrorCodeStrings.JobExists)
                     {
-                        CloudJob job = batchClient.JobOperations.CreateJob();
-                        job.Id = JobId;
-                        job.PoolInformation = new PoolInformation { PoolId = PoolId };
-
-                        job.Commit();
+                        Console.WriteLine("The job {0} already existed when we tried to create it", JobId);
                     }
-                    catch (BatchException be)
+                    else
                     {
-                        // Accept the specific error code JobExists as that is expected if the job already exists
-                        if (be.RequestInformation?.BatchError?.Code == BatchErrorCodeStrings.JobExists)
-                        {
-                            Console.WriteLine("The job {0} already existed when we tried to create it", JobId);
-                        }
-                        else
-                        {
-                            throw; // Any other exception is unexpected
-                        }
+                        throw; // Any other exception is unexpected
                     }
+                }
 
-                    // Create a collection to hold the tasks that we'll be adding to the job
+                // Create a collection to hold the tasks that we'll be adding to the job
+                Console.WriteLine("Adding {0} tasks to job [{1}]...", inputFiles.Count, JobId);
+                var tasks = new List<CloudTask>();
 
-                    Console.WriteLine("Adding {0} tasks to job [{1}]...", inputFiles.Count, JobId);
+                // Create each of the tasks to process one of the input files. 
+                for (int i = 0; i < inputFiles.Count; i++)
+                {
+                    string taskId = string.Format("Task{0}", i);
+                    string inputFilename = inputFiles[i].FilePath;
+                    string taskCommandLine = string.Format("cmd /c type {0}", inputFilename);
 
-                    List<CloudTask> tasks = new List<CloudTask>();
-
-                    // Create each of the tasks to process one of the input files. 
-
-                    for (int i = 0; i < inputFiles.Count; i++)
+                    var task = new CloudTask(taskId, taskCommandLine)
                     {
-                        string taskId = String.Format("Task{0}", i);
-                        string inputFilename = inputFiles[i].FilePath;
-                        string taskCommandLine = String.Format("cmd /c type {0}", inputFilename);
+                        ResourceFiles = new List<ResourceFile> { inputFiles[i] }
+                    };
+                    tasks.Add(task);
+                }
 
-                        CloudTask task = new CloudTask(taskId, taskCommandLine);
-                        task.ResourceFiles = new List<ResourceFile> { inputFiles[i] };
-                        tasks.Add(task);
-                    }
+                // Add all tasks to the job.
+                batchClient.JobOperations.AddTask(JobId, tasks);
 
-                    // Add all tasks to the job.
-                    batchClient.JobOperations.AddTask(JobId, tasks);
+                // Monitor task success/failure, specifying a maximum amount of time to wait for the tasks to complete.
+                TimeSpan timeout = TimeSpan.FromMinutes(30);
+                Console.WriteLine("Monitoring all tasks for 'Completed' state, timeout in {0}...", timeout);
 
+                IEnumerable<CloudTask> addedTasks = batchClient.JobOperations.ListTasks(JobId);
+                batchClient.Utilities.CreateTaskStateMonitor().WaitAll(addedTasks, TaskState.Completed, timeout);
+                Console.WriteLine("All tasks reached state Completed.");
 
-                    // Monitor task success/failure, specifying a maximum amount of time to wait for the tasks to complete.
+                // Print task output
+                Console.WriteLine();
+                Console.WriteLine("Printing task output...");
 
-                    TimeSpan timeout = TimeSpan.FromMinutes(30);
-                    Console.WriteLine("Monitoring all tasks for 'Completed' state, timeout in {0}...", timeout);
+                IEnumerable<CloudTask> completedtasks = batchClient.JobOperations.ListTasks(JobId);
+                foreach (CloudTask task in completedtasks)
+                {
+                    string nodeId = String.Format(task.ComputeNodeInformation.ComputeNodeId);
+                    Console.WriteLine("Task: {0}", task.Id);
+                    Console.WriteLine("Node: {0}", nodeId);
+                    Console.WriteLine("Standard out:");
+                    Console.WriteLine(task.GetNodeFile(Constants.StandardOutFileName).ReadAsString());
+                }
 
-                    IEnumerable<CloudTask> addedTasks = batchClient.JobOperations.ListTasks(JobId);
+                // Print out some timing info
+                timer.Stop();
+                Console.WriteLine();
+                Console.WriteLine("Sample end: {0}", DateTime.Now);
+                Console.WriteLine("Elapsed time: {0}", timer.Elapsed);
 
-                    batchClient.Utilities.CreateTaskStateMonitor().WaitAll(addedTasks, TaskState.Completed, timeout);
+                // Clean up Storage resources
+                containerClient.DeleteIfExistsAsync().Wait();
+                Console.WriteLine("Container [{0}] deleted.", inputContainerName);
 
-                    Console.WriteLine("All tasks reached state Completed.");
+                // Clean up Batch resources (if the user so chooses)
+                Console.WriteLine();
+                Console.Write("Delete job? [yes] no: ");
+                string response = Console.ReadLine().ToLower();
+                if (response != "n" && response != "no")
+                {
+                    batchClient.JobOperations.DeleteJob(JobId);
+                }
 
-                    // Print task output
-                    Console.WriteLine();
-                    Console.WriteLine("Printing task output...");
-
-                    IEnumerable<CloudTask> completedtasks = batchClient.JobOperations.ListTasks(JobId);
-
-                    foreach (CloudTask task in completedtasks)
-                    {
-                        string nodeId = String.Format(task.ComputeNodeInformation.ComputeNodeId);
-                        Console.WriteLine("Task: {0}", task.Id);
-                        Console.WriteLine("Node: {0}", nodeId);
-                        Console.WriteLine("Standard out:");
-                        Console.WriteLine(task.GetNodeFile(Constants.StandardOutFileName).ReadAsString());
-                    }
-
-                    // Print out some timing info
-                    timer.Stop();
-                    Console.WriteLine();
-                    Console.WriteLine("Sample end: {0}", DateTime.Now);
-                    Console.WriteLine("Elapsed time: {0}", timer.Elapsed);
-
-                    // Clean up Storage resources
-                    container.DeleteIfExistsAsync().Wait();
-                    Console.WriteLine("Container [{0}] deleted.", inputContainerName);
-
-                    // Clean up Batch resources (if the user so chooses)
-                    Console.WriteLine();
-                    Console.Write("Delete job? [yes] no: ");
-                    string response = Console.ReadLine().ToLower();
-                    if (response != "n" && response != "no")
-                    {
-                        batchClient.JobOperations.DeleteJob(JobId);
-                    }
-
-                    Console.Write("Delete pool? [yes] no: ");
-                    response = Console.ReadLine().ToLower();
-                    if (response != "n" && response != "no")
-                    {
-                        batchClient.PoolOperations.DeletePool(PoolId);
-                    }
+                Console.Write("Delete pool? [yes] no: ");
+                response = Console.ReadLine().ToLower();
+                if (response != "n" && response != "no")
+                {
+                    batchClient.PoolOperations.DeletePool(PoolId);
                 }
             }
             finally
@@ -201,7 +183,6 @@ namespace BatchDotNetQuickstart
                 Console.WriteLine("Sample complete, hit ENTER to exit...");
                 Console.ReadLine();
             }
-            
         }
 
         private static void CreateBatchPool(BatchClient batchClient, VirtualMachineConfiguration vmConfiguration)
@@ -252,55 +233,64 @@ namespace BatchDotNetQuickstart
         /// <param name="storageAccountName">The name of the Storage Account</param>
         /// <param name="storageAccountKey">The key of the Storage Account</param>
         /// <returns></returns>
-        private static CloudBlobClient CreateCloudBlobClient(string storageAccountName, string storageAccountKey)
+        private static BlobServiceClient GetBlobServiceClient(string storageAccountName, string storageAccountKey)
         {
-            // Construct the Storage account connection string
-            string storageConnectionString =
-                $"DefaultEndpointsProtocol=https;AccountName={storageAccountName};AccountKey={storageAccountKey}";
+            var sharedKeyCredential = new StorageSharedKeyCredential(storageAccountName, storageAccountKey);
+            string blobUri = "https://" + storageAccountName + ".blob.core.windows.net";
 
-            // Retrieve the storage account
-            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageConnectionString);
-
-            // Create the blob client
-            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-            return blobClient;
+            var blobServiceClient = new BlobServiceClient(new Uri(blobUri), sharedKeyCredential);
+            return blobServiceClient;
         }
-
 
         /// <summary>
         /// Uploads the specified file to the specified Blob container.
         /// </summary>
-        /// <param name="blobClient">A <see cref="CloudBlobClient"/>.</param>
+        /// <param name="containerClient">A <see cref="BlobContainerClient"/>.</param>
         /// <param name="containerName">The name of the blob storage container to which the file should be uploaded.</param>
         /// <param name="filePath">The full path to the file to upload to Storage.</param>
         /// <returns>A ResourceFile instance representing the file within blob storage.</returns>
-        private static ResourceFile UploadFileToContainer(CloudBlobClient blobClient, string containerName, string filePath)
+        private static ResourceFile UploadFileToContainer(BlobContainerClient containerClient, string containerName, string filePath, string storedPolicyName = null)
         {
             Console.WriteLine("Uploading file {0} to container [{1}]...", filePath, containerName);
-
             string blobName = Path.GetFileName(filePath);
-
             filePath = Path.Combine(Environment.CurrentDirectory, filePath);
 
-            CloudBlobContainer container = blobClient.GetContainerReference(containerName);
-            CloudBlockBlob blobData = container.GetBlockBlobReference(blobName);
-            blobData.UploadFromFileAsync(filePath).Wait();
+            var blobClient = containerClient.GetBlobClient(blobName);
+            blobClient.Upload(filePath, true);
 
             // Set the expiry time and permissions for the blob shared access signature. 
             // In this case, no start time is specified, so the shared access signature 
             // becomes valid immediately
-            SharedAccessBlobPolicy sasConstraints = new SharedAccessBlobPolicy
+            // Check whether this BlobContainerClient object has been authorized with Shared Key.
+            if (blobClient.CanGenerateSasUri)
             {
-                SharedAccessExpiryTime = DateTime.UtcNow.AddHours(2),
-                Permissions = SharedAccessBlobPermissions.Read
-            };
+                // Create a SAS token
+                var sasBuilder = new BlobSasBuilder()
+                {
+                    BlobContainerName = containerClient.Name,
+                    BlobName = blobClient.Name,
+                    Resource = "b"
+                };
 
-            // Construct the SAS URL for blob
-            string sasBlobToken = blobData.GetSharedAccessSignature(sasConstraints);
-            string blobSasUri = String.Format("{0}{1}", blobData.Uri, sasBlobToken);
+                if (storedPolicyName == null)
+                {
+                    sasBuilder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(1);
+                    sasBuilder.SetPermissions(BlobContainerSasPermissions.Read);
+                }
+                else
+                {
+                    sasBuilder.Identifier = storedPolicyName;
+                }
 
-            return ResourceFile.FromUrl(blobSasUri, filePath);
+                var sasUri = blobClient.GenerateSasUri(sasBuilder).ToString();
+                return ResourceFile.FromUrl(sasUri, filePath);
+            }
+            else
+            {
+                Console.WriteLine(@"BlobClient must be authorized with Shared Key 
+                          credentials to create a service SAS.");
+                return null;
+            }
         }
-
     }
 }

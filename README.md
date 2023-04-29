@@ -12,12 +12,12 @@ urlFragment: batch-dotnet-quickstart
 
 A basic .NET application that introduces Batch features such as pools, nodes, jobs, tasks, and interaction with Storage. Each task writes a small text file to standard output.
 
-For details and explanation, see the accompanying article [Run your first Batch job with the .NET API](https://docs.microsoft.com/azure/batch/quick-run-dotnet).
+For details and explanation, see the accompanying article [Quickstart: Use .NET to create a pool and run a job](https://docs.microsoft.com/azure/batch/quick-run-dotnet).
 
 ## Prerequisites
 
 - Azure Batch account and linked general-purpose Azure Storage account
-- Visual Studio 2019, or [.NET Core 2.1](https://www.microsoft.com/net/download/dotnet-core/2.1) for Linux, macOS, or Windows
+- Visual Studio 2019, or [.NET Core 6.0](https://www.microsoft.com/net/download/dotnet) for Linux or Windows
 
 ## Resources
 
