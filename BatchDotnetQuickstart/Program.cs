@@ -262,35 +262,38 @@ namespace BatchDotNetQuickstart
             // In this case, no start time is specified, so the shared access signature 
             // becomes valid immediately
             // Check whether this BlobContainerClient object has been authorized with Shared Key.
-            if (blobClient.CanGenerateSasUri)
-            {
-                // Create a SAS token
-                var sasBuilder = new BlobSasBuilder()
+            try
+                if (blobClient.CanGenerateSasUri)
                 {
-                    BlobContainerName = containerClient.Name,
-                    BlobName = blobClient.Name,
-                    Resource = "b"
-                };
-
-                if (storedPolicyName == null)
-                {
-                    sasBuilder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(1);
-                    sasBuilder.SetPermissions(BlobContainerSasPermissions.Read);
+                    // Create a SAS token
+                    var sasBuilder = new BlobSasBuilder()
+                    {
+                        BlobContainerName = containerClient.Name,
+                        BlobName = blobClient.Name,
+                        Resource = "b"
+                    };
+    
+                    if (storedPolicyName == null)
+                    {
+                        sasBuilder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(1);
+                        sasBuilder.SetPermissions(BlobContainerSasPermissions.Read);
+                    }
+                    else
+                    {
+                        sasBuilder.Identifier = storedPolicyName;
+                    }
+    
+                    var sasUri = blobClient.GenerateSasUri(sasBuilder).ToString();
+                    return ResourceFile.FromUrl(sasUri, filePath);
                 }
                 else
                 {
-                    sasBuilder.Identifier = storedPolicyName;
+                    throw new InvalidOperationException("BlobClient must be authorized with shared key credentials to create a service SAS.");
                 }
-
-                var sasUri = blobClient.GenerateSasUri(sasBuilder).ToString();
-                return ResourceFile.FromUrl(sasUri, filePath);
-            }
-            else
-            {
-                Console.WriteLine(@"BlobClient must be authorized with Shared Key 
-                          credentials to create a service SAS.");
-                return null;
-            }
+            catch (Exception ex)
+                {
+                    "Console.WriteLine($"{ex.Message}");
+                }
         }
     }
 }
