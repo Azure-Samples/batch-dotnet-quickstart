@@ -17,7 +17,7 @@ For details and explanation, see the accompanying article [Quickstart: Use .NET 
 ## Prerequisites
 
 - Azure Batch account and linked general-purpose Azure Storage account
-- Visual Studio 2019, or [.NET Core 6.0](https://www.microsoft.com/net/download/dotnet) for Linux or Windows
+- Visual Studio 2019 or higher, or [.NET 6.0](https://www.microsoft.com/net/download/dotnet) or higher for Linux or Windows
 
 ## Resources
 
