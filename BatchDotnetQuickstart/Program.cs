@@ -29,15 +29,15 @@ namespace BatchDotNetQuickstart
         private const string PoolId = "DotNetQuickstartPool";
         private const string JobId = "DotNetQuickstartJob";
         private const int PoolNodeCount = 2;
-        private const string PoolVMSize = "STANDARD_A1_v2";
+        private const string PoolVMSize = "STANDARD_D1_V2";
 
         static void Main()
         {
-            if (String.IsNullOrEmpty(BatchAccountName) ||
-                String.IsNullOrEmpty(BatchAccountKey) ||
-                String.IsNullOrEmpty(BatchAccountUrl) ||
-                String.IsNullOrEmpty(StorageAccountName) ||
-                String.IsNullOrEmpty(StorageAccountKey))
+            if (string.IsNullOrEmpty(BatchAccountName) ||
+                string.IsNullOrEmpty(BatchAccountKey) ||
+                string.IsNullOrEmpty(BatchAccountUrl) ||
+                string.IsNullOrEmpty(StorageAccountName) ||
+                string.IsNullOrEmpty(StorageAccountKey))
             {
                 throw new InvalidOperationException("One or more account credential strings have not been populated. Please ensure that your Batch and Storage account credentials have been specified.");
             }
@@ -144,7 +144,7 @@ namespace BatchDotNetQuickstart
                 IEnumerable<CloudTask> completedtasks = batchClient.JobOperations.ListTasks(JobId);
                 foreach (CloudTask task in completedtasks)
                 {
-                    string nodeId = String.Format(task.ComputeNodeInformation.ComputeNodeId);
+                    string nodeId = string.Format(task.ComputeNodeInformation.ComputeNodeId);
                     Console.WriteLine("Task: {0}", task.Id);
                     Console.WriteLine("Node: {0}", nodeId);
                     Console.WriteLine("Standard out:");
@@ -176,6 +176,10 @@ namespace BatchDotNetQuickstart
                 {
                     batchClient.PoolOperations.DeletePool(PoolId);
                 }
+            }
+            catch(Exception e) 
+            {
+                Console.WriteLine(e.Message);
             }
             finally
             {
@@ -262,38 +266,33 @@ namespace BatchDotNetQuickstart
             // In this case, no start time is specified, so the shared access signature 
             // becomes valid immediately
             // Check whether this BlobContainerClient object has been authorized with Shared Key.
-            try
-                if (blobClient.CanGenerateSasUri)
+            if (blobClient.CanGenerateSasUri)
+            {
+                // Create a SAS token
+                var sasBuilder = new BlobSasBuilder()
                 {
-                    // Create a SAS token
-                    var sasBuilder = new BlobSasBuilder()
-                    {
-                        BlobContainerName = containerClient.Name,
-                        BlobName = blobClient.Name,
-                        Resource = "b"
-                    };
-    
-                    if (storedPolicyName == null)
-                    {
-                        sasBuilder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(1);
-                        sasBuilder.SetPermissions(BlobContainerSasPermissions.Read);
-                    }
-                    else
-                    {
-                        sasBuilder.Identifier = storedPolicyName;
-                    }
-    
-                    var sasUri = blobClient.GenerateSasUri(sasBuilder).ToString();
-                    return ResourceFile.FromUrl(sasUri, filePath);
+                    BlobContainerName = containerClient.Name,
+                    BlobName = blobClient.Name,
+                    Resource = "b"
+                };
+
+                if (storedPolicyName == null)
+                {
+                    sasBuilder.ExpiresOn = DateTimeOffset.UtcNow.AddHours(1);
+                    sasBuilder.SetPermissions(BlobContainerSasPermissions.Read);
                 }
                 else
                 {
-                    throw new InvalidOperationException("BlobClient must be authorized with shared key credentials to create a service SAS.");
+                    sasBuilder.Identifier = storedPolicyName;
                 }
-            catch (Exception ex)
-                {
-                    "Console.WriteLine($"{ex.Message}");
-                }
+
+                var sasUri = blobClient.GenerateSasUri(sasBuilder).ToString();
+                return ResourceFile.FromUrl(sasUri, filePath);
+            }
+            else
+            {
+                throw new InvalidOperationException("BlobClient must be authorized with shared key credentials to create a service SAS.");
+            }
         }
     }
 }
